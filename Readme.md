@@ -1,5 +1,5 @@
 [![Build Status](https://travis-ci.org/barakb/mini-rest-client.svg?branch=master)](https://travis-ci.org/barakb/mini-rest-client)
-
+[![Download](https://api.bintray.com/packages/barakb/maven/mini-rest-client/images/download.svg) ](https://bintray.com/barakb/maven/mini-rest-client/_latestVersion)
 ### A Kotlin Minimal REST client
 
 I had 3 goals in mind when starting this work.
