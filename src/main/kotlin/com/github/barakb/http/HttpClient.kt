@@ -2,8 +2,6 @@ package com.github.barakb.http
 
 import com.google.gson.Gson
 import com.google.gson.GsonBuilder
-import com.google.gson.JsonObject
-import kotlinx.coroutines.runBlocking
 import mu.KotlinLogging
 import org.apache.hc.client5.http.async.methods.SimpleHttpRequest
 import org.apache.hc.client5.http.async.methods.SimpleHttpRequests
@@ -190,12 +188,21 @@ class RequestBuilder(private val headers: MutableSet<Pair<String, String>> = mut
     fun param(name: String, value: Any?) {
         value?.let { queries.add(name to it.toString()) }
     }
+    
+    @Suppress("unused")
+    fun param(name: String) {
+        queries.add(name to "")
+    }
 
 
     private fun appendQueries(url: String, queries: Set<Pair<String, String>>): String {
         return queries.foldIndexed(url, { i, acc, query ->
             val connector = if (i == 0) "?" else "&"
-            "$acc$connector${query.first}=${query.second}"
+            if(query.second == "") {
+                "$acc$connector${query.first}"
+            }else{
+                "$acc$connector${query.first}=${query.second}"
+            }
         })
     }
 
