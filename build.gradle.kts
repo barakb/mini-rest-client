@@ -150,14 +150,13 @@ bintray {
         repo = "maven"
         name = artifactName
         userOrg = "barakb"
-        githubRepo = githubRepo
+        githubRepo = "barakb/mini-rest-client"
         vcsUrl = pomScmUrl
         description = "A Kotlin Mimimal REST client"
         setLabels("kotlin", "REST")
         setLicenses("Apache-2.0")
         desc = description
         websiteUrl = pomUrl
-        vcsUrl = "https://github.com/barakb/mini-rest-client"
         issueTrackerUrl = pomIssueUrl
         githubReleaseNotesFile = githubReadme
         version.apply {
