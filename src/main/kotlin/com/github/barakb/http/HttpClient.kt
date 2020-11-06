@@ -2,6 +2,7 @@ package com.github.barakb.http
 
 import com.google.gson.Gson
 import com.google.gson.GsonBuilder
+import com.google.gson.JsonSyntaxException
 import mu.KotlinLogging
 import org.apache.hc.client5.http.async.methods.SimpleHttpRequest
 import org.apache.hc.client5.http.async.methods.SimpleHttpRequests
@@ -70,22 +71,33 @@ class HttpClient(configBuilder: HttpConfigBuilder) : Closeable {
         val request = config.defaultRequest.copy().apply(init).build(requestType)
         val httpRequest = prepareHttpUriRequest(request)
         val response = httpClient.execute(httpRequest)
-        extractResponse(response)
+        extractResponse(request.type, request.url, response)
     }
 
 
-    inline fun <reified T> extractResponse(response: SimpleHttpResponse): T {
+    inline fun <reified T> extractResponse(requestType: RequestType, requestUrl: String, response: SimpleHttpResponse): T {
         val typeInfo = typeInfo<T>()
         val status = response.code
         if (status == 404) {
             if (typeInfo.kotlinType?.isMarkedNullable == true) {
                 return null as T
+            } else {
+                throw HttpResponseException(status, response.reasonPhrase, requestType, requestUrl)
             }
         }
         return when (T::class) {
             HttpResponse::class -> response as T
             String::class -> response.bodyText as T
-            else -> config.gson.fromJson(response.bodyText, typeInfo.reifiedType)
+            else ->
+                try {
+                    config.gson.fromJson(response.bodyText, typeInfo.reifiedType)
+                } catch (jse: JsonSyntaxException) {
+                    if (typeInfo.kotlinType?.isMarkedNullable == true) {
+                        null as T
+                    } else {
+                        throw ResponseSyntaxException(jse.message, response.bodyText, typeInfo.reifiedType, requestType, requestUrl)
+                    }
+                }
         }
     }
 
@@ -93,9 +105,10 @@ class HttpClient(configBuilder: HttpConfigBuilder) : Closeable {
         val httpRequest = httpRequest(request)
         httpRequest.uri = URI.create(request.url)
         request.body?.let {
-            val content = config.gson.toJson(it)
+            val ct = request.contentType ?: ContentType.APPLICATION_JSON
+            val content = if (ct == ContentType.APPLICATION_JSON) config.gson.toJson(it) else "$it"
             logger.debug("${httpRequest.method} ${httpRequest.uri}: body = $content")
-            httpRequest.setBody(content.toByteArray(), ContentType.APPLICATION_JSON)
+            httpRequest.setBody(content.toByteArray(), ct)
         }
         request.headers.forEach {
             httpRequest.setHeader(it.first, it.second)
@@ -124,8 +137,8 @@ class Config(val builder: HttpAsyncClientBuilder, val defaultRequest: RequestBui
 @DslHttpClient
 class HttpConfigBuilder {
     private var defaultRequest: RequestBuilder = RequestBuilder()
-    private var gson = GsonBuilder()
-    private var builder = HttpAsyncClients.custom()
+    private var gsonBuilder = GsonBuilder()
+    private var httpAsyncClientBuilder = HttpAsyncClients.custom()
 
 
     @Suppress("unused")
@@ -135,16 +148,16 @@ class HttpConfigBuilder {
 
     @Suppress("unused")
     fun gson(init: GsonBuilder.() -> Unit) {
-        gson = gson.apply(init)
+        gsonBuilder = gsonBuilder.apply(init)
     }
 
     @Suppress("unused")
     fun client(init: HttpAsyncClientBuilder.() -> Unit) {
-        builder.apply(init)
+        httpAsyncClientBuilder.apply(init)
     }
 
     internal fun create(): Config {
-        return Config(builder, defaultRequest, gson.create())
+        return Config(httpAsyncClientBuilder, defaultRequest, gsonBuilder.create())
     }
 }
 
@@ -158,25 +171,34 @@ enum class RequestType {
     OPTIONS
 }
 
-data class Request(val type: RequestType, val url: String, var body: Any? = null, val headers: Set<Pair<String, String>>)
+data class Request(
+    val type: RequestType,
+    val url: String,
+    var body: Any? = null,
+    val headers: Set<Pair<String, String>>,
+    val contentType: ContentType?
+)
 
+@Suppress("MemberVisibilityCanBePrivate")
 @DslHttpClient
-class RequestBuilder(private val headers: MutableSet<Pair<String, String>> = mutableSetOf(),
-                     private val queries: MutableSet<Pair<String, String>> = mutableSetOf(),
-                     var url: String? = null,
-                     var body: Any? = null,
-                     var path: String = ""
+class RequestBuilder(
+    private val headers: MutableSet<Pair<String, String>> = mutableSetOf(),
+    private val queries: MutableSet<Pair<String, String>> = mutableSetOf(),
+    var url: String? = null,
+    var body: Any? = null,
+    var path: String = "",
+    var contentType: ContentType? = null
 ) {
 
     fun copy(): RequestBuilder {
-        return RequestBuilder(headers.toMutableSet(), queries.toMutableSet(), url, body, path)
+        return RequestBuilder(headers.toMutableSet(), queries.toMutableSet(), url, body, path, contentType)
     }
 
     fun build(type: RequestType): Request {
         val combined = url?.let { combineUrl(it, path) }
                 ?: throw java.lang.IllegalArgumentException("Bad request, url is not set")
         val withQueries = appendQueries(combined, queries)
-        return Request(type, withQueries, body, headers)
+        return Request(type, withQueries, body, headers, contentType)
     }
 
     @Suppress("unused")
