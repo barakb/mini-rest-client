@@ -1,5 +1,7 @@
 [![Build Status](https://travis-ci.org/barakb/mini-rest-client.svg?branch=master)](https://travis-ci.org/barakb/mini-rest-client)
 [![Download](https://api.bintray.com/packages/barakb/maven/mini-rest-client/images/download.svg) ](https://bintray.com/barakb/maven/mini-rest-client/_latestVersion)
+[![Maven Central](https://maven-badges.herokuapp.com/maven-central/com.github.barakb/mini-rest-client/badge.svg?color=blue)](https://maven-badges.herokuapp.com/maven-central/com.github.barakb/mini-rest-client)
+[![GitHub License](https://img.shields.io/badge/license-Apache%20License%202.0-blue.svg?style=flat)](https://www.apache.org/licenses/LICENSE-2.0)
 ### A Kotlin Minimal REST client
 
 I had 3 goals in mind when starting this work.
