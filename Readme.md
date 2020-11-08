@@ -61,3 +61,5 @@ client {
 }
 ```
 
+The client uses the return type to extract the result form the http response.
+  
