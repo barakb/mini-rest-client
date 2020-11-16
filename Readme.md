@@ -23,7 +23,7 @@ To consume this project using maven add the following to your pom.xml
 <dependency>
      <groupId>com.github.barakb</groupId>
      <artifactId>mini-rest-client</artifactId>
-     <version>1.0.2</version>
+     <version>1.0.3</version>
 </dependency>
 ````
 
@@ -31,7 +31,7 @@ Or gradle
 
 ````kotlin
 
-implementation("com.github.barakb:mini-rest-client:1.0.2")
+implementation("com.github.barakb:mini-rest-client:1.0.3")
 ````
 
 

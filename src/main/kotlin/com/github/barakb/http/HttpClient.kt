@@ -105,10 +105,15 @@ class HttpClient(configBuilder: HttpConfigBuilder) : Closeable {
         val httpRequest = httpRequest(request)
         httpRequest.uri = URI.create(request.url)
         request.body?.let {
-            val ct = request.contentType ?: ContentType.APPLICATION_JSON
-            val content = if (ct == ContentType.APPLICATION_JSON) config.gson.toJson(it) else "$it"
-            logger.debug("${httpRequest.method} ${httpRequest.uri}: body = $content")
-            httpRequest.setBody(content.toByteArray(), ct)
+            if (it is ByteArray){
+                logger.debug("${httpRequest.method} ${httpRequest.uri}: body = binary")
+                httpRequest.setBody(it, ContentType.APPLICATION_OCTET_STREAM)
+            }else {
+                val ct = request.contentType ?: ContentType.APPLICATION_JSON
+                val content = if (ct == ContentType.APPLICATION_JSON) config.gson.toJson(it) else "$it"
+                logger.debug("${httpRequest.method} ${httpRequest.uri}: body = $content")
+                httpRequest.setBody(content.toByteArray(), ct)
+            }
         }
         request.headers.forEach {
             httpRequest.setHeader(it.first, it.second)
