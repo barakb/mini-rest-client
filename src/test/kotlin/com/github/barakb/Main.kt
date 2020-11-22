@@ -1,6 +1,7 @@
 package com.github.barakb
 
 import com.github.barakb.http.HttpClient
+import com.github.barakb.http.HttpHeader
 import com.google.gson.JsonObject
 import kotlinx.coroutines.runBlocking
 import org.apache.hc.core5.http.ContentType
@@ -19,9 +20,11 @@ fun main(): Unit = runBlocking {
             param("v", "f")
         }
     }.use { client ->
-        val headers = client.get<JsonObject> {
+        val headers = client.get<Headers> {
             path = "headers"
         }
         println("headers: $headers")
     }
 }
+
+data class Headers(@HttpHeader("host") var host: String?, val headers: JsonObject)

@@ -11,10 +11,14 @@ import org.apache.hc.client5.http.impl.async.CloseableHttpAsyncClient
 import org.apache.hc.client5.http.impl.async.HttpAsyncClientBuilder
 import org.apache.hc.client5.http.impl.async.HttpAsyncClients
 import org.apache.hc.core5.http.ContentType
+import org.apache.hc.core5.http.Header
 import org.apache.hc.core5.http.HttpResponse
 import org.apache.hc.core5.io.CloseMode
 import java.io.Closeable
 import java.net.URI
+import kotlin.reflect.KMutableProperty
+import kotlin.reflect.full.declaredMembers
+import kotlin.reflect.full.findAnnotation
 
 
 private val logger = KotlinLogging.logger {}
@@ -71,11 +75,35 @@ class HttpClient(configBuilder: HttpConfigBuilder) : Closeable {
         val request = config.defaultRequest.copy().apply(init).build(requestType)
         val httpRequest = prepareHttpUriRequest(request)
         val response = httpClient.execute(httpRequest)
-        extractResponse(request.type, request.url, response)
+        val res = extractResponse<T>(request.type, request.url, response)
+        when (T::class) {
+            List::class -> (res as List<*>?)?.forEach { populateHeaders(it, response) }
+            else -> populateHeaders(res, response)
+        }
+        res
+    }
+
+    fun populateHeaders(res: Any?, response: SimpleHttpResponse) {
+        if (res != null) {
+            res::class.declaredMembers.filterIsInstance<KMutableProperty<*>>()
+                .forEach { prop ->
+                    val httpHeader = prop.findAnnotation<HttpHeader>()
+                    if (httpHeader != null) {
+                        val found: Header? = response.getFirstHeader(httpHeader.name)
+                        found?.let {
+                            prop.setter.call(res, found.value)
+                        }
+                    }
+                }
+        }
     }
 
 
-    inline fun <reified T> extractResponse(requestType: RequestType, requestUrl: String, response: SimpleHttpResponse): T {
+    inline fun <reified T> extractResponse(
+        requestType: RequestType,
+        requestUrl: String,
+        response: SimpleHttpResponse
+    ): T {
         val typeInfo = typeInfo<T>()
         val status = response.code
         if (status == 404) {
@@ -95,7 +123,13 @@ class HttpClient(configBuilder: HttpConfigBuilder) : Closeable {
                     if (typeInfo.kotlinType?.isMarkedNullable == true) {
                         null as T
                     } else {
-                        throw ResponseSyntaxException(jse.message, response.bodyText, typeInfo.reifiedType, requestType, requestUrl)
+                        throw ResponseSyntaxException(
+                            jse.message,
+                            response.bodyText,
+                            typeInfo.reifiedType,
+                            requestType,
+                            requestUrl
+                        )
                     }
                 }
         }
@@ -105,10 +139,10 @@ class HttpClient(configBuilder: HttpConfigBuilder) : Closeable {
         val httpRequest = httpRequest(request)
         httpRequest.uri = URI.create(request.url)
         request.body?.let {
-            if (it is ByteArray){
+            if (it is ByteArray) {
                 logger.debug("${httpRequest.method} ${httpRequest.uri}: body = binary")
                 httpRequest.setBody(it, ContentType.APPLICATION_OCTET_STREAM)
-            }else {
+            } else {
                 val ct = request.contentType ?: ContentType.APPLICATION_JSON
                 val content = if (ct == ContentType.APPLICATION_JSON) config.gson.toJson(it) else "$it"
                 logger.debug("${httpRequest.method} ${httpRequest.uri}: body = $content")
@@ -137,7 +171,11 @@ class HttpClient(configBuilder: HttpConfigBuilder) : Closeable {
 
 @DslMarker
 annotation class DslHttpClient
-class Config(val builder: HttpAsyncClientBuilder, val defaultRequest: RequestBuilder = RequestBuilder(), val gson: Gson = Gson())
+class Config(
+    val builder: HttpAsyncClientBuilder,
+    val defaultRequest: RequestBuilder = RequestBuilder(),
+    val gson: Gson = Gson()
+)
 
 @DslHttpClient
 class HttpConfigBuilder {
@@ -201,7 +239,7 @@ class RequestBuilder(
 
     fun build(type: RequestType): Request {
         val combined = url?.let { combineUrl(it, path) }
-                ?: throw java.lang.IllegalArgumentException("Bad request, url is not set")
+            ?: throw java.lang.IllegalArgumentException("Bad request, url is not set")
         val withQueries = appendQueries(combined, queries)
         return Request(type, withQueries, body, headers, contentType)
     }
@@ -215,7 +253,7 @@ class RequestBuilder(
     fun param(name: String, value: Any?) {
         value?.let { queries.add(name to it.toString()) }
     }
-    
+
     @Suppress("unused")
     fun param(name: String) {
         queries.add(name to "")
@@ -225,9 +263,9 @@ class RequestBuilder(
     private fun appendQueries(url: String, queries: Set<Pair<String, String>>): String {
         return queries.foldIndexed(url, { i, acc, query ->
             val connector = if (i == 0) "?" else "&"
-            if(query.second == "") {
+            if (query.second == "") {
                 "$acc$connector${query.first}"
-            }else{
+            } else {
                 "$acc$connector${query.first}=${query.second}"
             }
         })

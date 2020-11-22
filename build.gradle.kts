@@ -2,7 +2,7 @@ import org.gradle.jvm.tasks.Jar
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 import java.util.*
 
-val coroutinesVersion = "1.3.9"
+val coroutinesVersion = "1.4.1"
 val jupiterVersion = "5.6.2"
 val logbackVersion = "1.2.3"
 val kotlinLoginVersion = "1.8.3"
@@ -10,8 +10,8 @@ val slf4jApiVersoion = "1.7.30"
 val gsonVersion = "2.8.6"
 val httpClientVersion = "5.0.1"
 
-plugins {
-    kotlin("jvm") version "1.4.10"
+    plugins {
+    kotlin("jvm") version "1.4.20"
     id("org.jetbrains.dokka") version "1.4.10"
     application
     id("com.adarshr.test-logger") version "2.1.0"
@@ -19,7 +19,7 @@ plugins {
     id("com.jfrog.bintray") version "1.8.4"
 }
 group = "com.github.barakb"
-version = "1.0.3"
+version = "1.0.4"
 
 repositories {
     gradlePluginPortal()
@@ -35,7 +35,7 @@ dependencies {
     implementation("com.google.code.gson:gson:$gsonVersion")
     implementation("org.slf4j:slf4j-api:$slf4jApiVersoion")
     implementation("io.github.microutils:kotlin-logging:$kotlinLoginVersion")
-
+    implementation("org.jetbrains.kotlin:kotlin-reflect:1.4.20")
     dokkaJavadocPlugin("org.jetbrains.dokka:kotlin-as-java-plugin:1.4.10")
 
     testImplementation("org.junit.jupiter:junit-jupiter-api:$jupiterVersion")
