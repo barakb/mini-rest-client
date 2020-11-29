@@ -7,22 +7,29 @@ import mu.KotlinLogging
 import org.apache.hc.client5.http.async.methods.SimpleHttpRequest
 import org.apache.hc.client5.http.async.methods.SimpleHttpRequests
 import org.apache.hc.client5.http.async.methods.SimpleHttpResponse
+import org.apache.hc.client5.http.config.RequestConfig
 import org.apache.hc.client5.http.impl.async.CloseableHttpAsyncClient
 import org.apache.hc.client5.http.impl.async.HttpAsyncClientBuilder
 import org.apache.hc.client5.http.impl.async.HttpAsyncClients
+import org.apache.hc.client5.http.protocol.HttpClientContext
+import org.apache.hc.client5.http.protocol.HttpClientContext.REQUEST_CONFIG
 import org.apache.hc.core5.http.ContentType
 import org.apache.hc.core5.http.Header
 import org.apache.hc.core5.http.HttpResponse
 import org.apache.hc.core5.io.CloseMode
 import java.io.Closeable
 import java.net.URI
+import java.util.concurrent.TimeUnit
 import kotlin.reflect.KMutableProperty
 import kotlin.reflect.full.declaredMembers
 import kotlin.reflect.full.findAnnotation
+import kotlin.time.Duration
+import kotlin.time.ExperimentalTime
 
 
 private val logger = KotlinLogging.logger {}
 
+@ExperimentalTime
 class HttpClient(configBuilder: HttpConfigBuilder) : Closeable {
     val config: Config = configBuilder.create()
 
@@ -73,8 +80,8 @@ class HttpClient(configBuilder: HttpConfigBuilder) : Closeable {
 
     inline fun <reified T> execute(requestType: RequestType): suspend (init: RequestBuilder.() -> Unit) -> T = { init ->
         val request = config.defaultRequest.copy().apply(init).build(requestType)
-        val httpRequest = prepareHttpUriRequest(request)
-        val response = httpClient.execute(httpRequest)
+        val (ctx, httpRequest) = prepareHttpUriRequest(request)
+        val response = httpClient.execute(ctx, httpRequest)
         val res = extractResponse<T>(request.type, request.url, response)
         when (T::class) {
             List::class -> (res as List<*>?)?.forEach { populateHeaders(it, response) }
@@ -135,8 +142,8 @@ class HttpClient(configBuilder: HttpConfigBuilder) : Closeable {
         }
     }
 
-    fun prepareHttpUriRequest(request: Request): SimpleHttpRequest {
-        val httpRequest = httpRequest(request)
+    fun prepareHttpUriRequest(request: Request): Pair<HttpClientContext, SimpleHttpRequest> {
+        val (ctx, httpRequest) = httpRequest(request)
         httpRequest.uri = URI.create(request.url)
         request.body?.let {
             if (it is ByteArray) {
@@ -153,11 +160,20 @@ class HttpClient(configBuilder: HttpConfigBuilder) : Closeable {
             httpRequest.setHeader(it.first, it.second)
         }
         logger.debug("sending $httpRequest")
-        return httpRequest
+        return (ctx to httpRequest)
     }
 
-    private fun httpRequest(request: Request): SimpleHttpRequest {
-        return when (request.type) {
+    private fun httpRequest(request: Request): Pair<HttpClientContext, SimpleHttpRequest> {
+        val requestConfigBuilder = RequestConfig.custom()
+        request.connectTimeout?.let {
+            requestConfigBuilder.setConnectTimeout(it.toLongMilliseconds(), TimeUnit.MILLISECONDS)
+        }
+        request.responseTimeout?.let {
+            requestConfigBuilder.setResponseTimeout(it.toLongMilliseconds(), TimeUnit.MILLISECONDS)
+        }
+        val ctx: HttpClientContext = HttpClientContext.create()
+        ctx.setAttribute(REQUEST_CONFIG, requestConfigBuilder.build())
+        return (ctx to when (request.type) {
             RequestType.GET -> SimpleHttpRequests.get(request.url)
             RequestType.PUT -> SimpleHttpRequests.put(request.url)
             RequestType.POST -> SimpleHttpRequests.post(request.url)
@@ -165,18 +181,20 @@ class HttpClient(configBuilder: HttpConfigBuilder) : Closeable {
             RequestType.HEAD -> SimpleHttpRequests.head(request.url)
             RequestType.TRACE -> SimpleHttpRequests.trace(request.url)
             RequestType.OPTIONS -> SimpleHttpRequests.options(request.url)
-        }
+        })
     }
 }
 
+
 @DslMarker
 annotation class DslHttpClient
-class Config(
+class Config @ExperimentalTime constructor(
     val builder: HttpAsyncClientBuilder,
     val defaultRequest: RequestBuilder = RequestBuilder(),
     val gson: Gson = Gson()
 )
 
+@ExperimentalTime
 @DslHttpClient
 class HttpConfigBuilder {
     private var defaultRequest: RequestBuilder = RequestBuilder()
@@ -214,34 +232,48 @@ enum class RequestType {
     OPTIONS
 }
 
-data class Request(
+data class Request @ExperimentalTime constructor(
     val type: RequestType,
     val url: String,
     var body: Any? = null,
     val headers: Set<Pair<String, String>>,
-    val contentType: ContentType?
+    val contentType: ContentType?,
+    val connectTimeout: Duration?,
+    val responseTimeout: Duration?
 )
 
+@ExperimentalTime
 @Suppress("MemberVisibilityCanBePrivate")
 @DslHttpClient
-class RequestBuilder(
+class RequestBuilder @ExperimentalTime constructor(
     private val headers: MutableSet<Pair<String, String>> = mutableSetOf(),
     private val queries: MutableSet<Pair<String, String>> = mutableSetOf(),
     var url: String? = null,
     var body: Any? = null,
     var path: String = "",
-    var contentType: ContentType? = null
+    var contentType: ContentType? = null,
+    var connectTimeout: Duration? = null,
+    var responseTimeout: Duration? = null
 ) {
 
     fun copy(): RequestBuilder {
-        return RequestBuilder(headers.toMutableSet(), queries.toMutableSet(), url, body, path, contentType)
+        return RequestBuilder(
+            headers.toMutableSet(),
+            queries.toMutableSet(),
+            url,
+            body,
+            path,
+            contentType,
+            connectTimeout,
+            responseTimeout
+        )
     }
 
     fun build(type: RequestType): Request {
         val combined = url?.let { combineUrl(it, path) }
             ?: throw java.lang.IllegalArgumentException("Bad request, url is not set")
         val withQueries = appendQueries(combined, queries)
-        return Request(type, withQueries, body, headers, contentType)
+        return Request(type, withQueries, body, headers, contentType, connectTimeout, responseTimeout)
     }
 
     @Suppress("unused")

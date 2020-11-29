@@ -5,11 +5,14 @@ import com.github.barakb.http.HttpHeader
 import com.google.gson.JsonObject
 import kotlinx.coroutines.runBlocking
 import org.apache.hc.core5.http.ContentType
+import kotlin.time.ExperimentalTime
+import kotlin.time.seconds
 
 // https://proandroiddev.com/writing-dsls-in-kotlin-part-2-cd9dcd0c4715
 // https://kotlinlang.org/docs/reference/type-safe-builders.html
 
 
+@ExperimentalTime
 fun main(): Unit = runBlocking {
     HttpClient {
         gson { setPrettyPrinting() }
@@ -22,6 +25,8 @@ fun main(): Unit = runBlocking {
     }.use { client ->
         val headers = client.get<Headers> {
             path = "headers"
+            connectTimeout = 15.seconds
+            responseTimeout = 30.seconds
         }
         println("headers: $headers")
     }

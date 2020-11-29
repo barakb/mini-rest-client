@@ -19,7 +19,7 @@ val httpClientVersion = "5.0.1"
     id("com.jfrog.bintray") version "1.8.4"
 }
 group = "com.github.barakb"
-version = "1.0.4"
+version = "1.0.5"
 
 repositories {
     gradlePluginPortal()

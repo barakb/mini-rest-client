@@ -23,7 +23,7 @@ To consume this project using maven add the following to your pom.xml
 <dependency>
      <groupId>com.github.barakb</groupId>
      <artifactId>mini-rest-client</artifactId>
-     <version>1.0.4</version>
+     <version>1.0.5</version>
 </dependency>
 ````
 
@@ -31,7 +31,7 @@ Or gradle
 
 ````kotlin
 
-implementation("com.github.barakb:mini-rest-client:1.0.4")
+implementation("com.github.barakb:mini-rest-client:1.0.5")
 ````
 
 
@@ -63,3 +63,31 @@ client {
 
 The client uses the return type to extract the result form the http response.
   
+  
+News:
+
+With version 1.0.5 it is possible to set the connectTimeout and the responseTimeout per request
+
+```kotlin
+@ExperimentalTime
+fun main(): Unit = runBlocking {
+    HttpClient {
+        gson { setPrettyPrinting() }
+        defaultRequest {
+            contentType = ContentType.APPLICATION_JSON
+            url = "http://httpbin.org/"
+            header("name", "value")
+            param("v", "f")
+        }
+    }.use { client ->
+        val headers = client.get<Headers> {
+            path = "headers"
+            connectTimeout = 15.seconds
+            responseTimeout = 30.seconds
+        }
+        println("headers: $headers")
+    }
+}
+
+data class Headers(@HttpHeader("host") var host: String?, val headers: JsonObject)
+```  
