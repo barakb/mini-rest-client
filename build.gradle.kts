@@ -36,7 +36,7 @@ dependencies {
     implementation("org.slf4j:slf4j-api:$slf4jApiVersoion")
     implementation("io.github.microutils:kotlin-logging:$kotlinLoginVersion")
     implementation("org.jetbrains.kotlin:kotlin-reflect:1.4.20")
-    dokkaJavadocPlugin("org.jetbrains.dokka:kotlin-as-java-plugin:1.4.10")
+    dokkaJavadocPlugin("org.jetbrains.dokka:kotlin-as-java-plugin:1.9.10")
 
     testImplementation("org.junit.jupiter:junit-jupiter-api:$jupiterVersion")
     testRuntimeOnly("org.junit.jupiter:junit-jupiter-engine:$jupiterVersion")
