@@ -6,7 +6,7 @@ val coroutinesVersion = "1.4.1"
 val jupiterVersion = "5.6.2"
 val logbackVersion = "1.2.3"
 val kotlinLoginVersion = "1.8.3"
-val slf4jApiVersoion = "1.7.30"
+val slf4jApiVersoion = "1.7.36"
 val gsonVersion = "2.8.6"
 val httpClientVersion = "5.0.1"
 
