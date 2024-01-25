@@ -14,7 +14,7 @@ val httpClientVersion = "5.3.1"
     kotlin("jvm") version "1.4.20"
     id("org.jetbrains.dokka") version "1.9.10"
     application
-    id("com.adarshr.test-logger") version "2.1.1"
+    id("com.adarshr.test-logger") version "4.0.0"
     `maven-publish`
     id("com.jfrog.bintray") version "1.8.5"
 }
