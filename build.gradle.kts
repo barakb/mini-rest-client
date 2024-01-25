@@ -7,7 +7,7 @@ val jupiterVersion = "5.6.2"
 val logbackVersion = "1.4.14"
 val kotlinLoginVersion = "1.8.3"
 val slf4jApiVersoion = "1.7.36"
-val gsonVersion = "2.8.6"
+val gsonVersion = "2.10.1"
 val httpClientVersion = "5.0.1"
 
     plugins {
