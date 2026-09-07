@@ -11,7 +11,7 @@ val gsonVersion = "2.10.1"
 val httpClientVersion = "5.3.1"
 
     plugins {
-    kotlin("jvm") version "1.9.22"
+    kotlin("jvm") version "1.9.25"
     id("org.jetbrains.dokka") version "1.9.10"
     application
     id("com.adarshr.test-logger") version "4.0.0"
@@ -35,7 +35,7 @@ dependencies {
     implementation("com.google.code.gson:gson:$gsonVersion")
     implementation("org.slf4j:slf4j-api:$slf4jApiVersoion")
     implementation("io.github.microutils:kotlin-logging:$kotlinLoginVersion")
-    implementation("org.jetbrains.kotlin:kotlin-reflect:1.9.22")
+    implementation("org.jetbrains.kotlin:kotlin-reflect:1.9.25")
     dokkaJavadocPlugin("org.jetbrains.dokka:kotlin-as-java-plugin:1.9.10")
 
     testImplementation("org.junit.jupiter:junit-jupiter-api:$jupiterVersion")
